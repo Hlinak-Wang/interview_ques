@@ -5,7 +5,7 @@ function AutoInput() {
 
   const [currInput, setInput] = useState("")
   const [textAssociate, setText] = useState("")
-  const [inputWidth, setWidth] = useState(0)
+  const [inputWidth, setWidth] = useState(2)
   const inputRef = createRef()
 
   const [wordDic, setDic] = useState([])
@@ -64,7 +64,7 @@ function AutoInput() {
   // 监听输入事件
   function handleChange(e) {
     setInput(e.target.value)
-    setWidth(0) // 确保输入框能够回缩
+    setWidth(2) // 确保输入框能够回缩
   }
 
   // 当点击时，添加字符进字典中，并清空输入框
