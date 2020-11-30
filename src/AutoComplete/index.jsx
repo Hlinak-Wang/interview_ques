@@ -54,15 +54,12 @@ function AutoInput() {
 
     // 每次字符变化时检测是否有可匹配的选项
     let wordMatch = Object.keys(wordDic).filter(v => { // 匹配单词
-      if (v.split(" ").length === 1) 
-        return v.startsWith(last_word)
-      else 
-        return false
+      return v.startsWith(last_word)
     });
     
     let sentenceMatch = Object.keys(sentenceDic).filter(v => { // 匹配句子
       if (v.split(" ").length > 1) 
-        return v.startsWith(words.join(" "))
+        return v.startsWith(words.join(" ") + " ")
       else 
         return false
     })
