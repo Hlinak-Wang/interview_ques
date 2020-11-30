@@ -4,7 +4,7 @@ import { maxKeyInDic } from './util'
 
 const useDictionary = () => {
   const [wordDic, setWordDic] = useState({})
-  const [sentenceDic, setSenDic] = useState({})
+  const [followDic, setFollDic] = useState({})
 
   function setToWordDic(wordInput) {
     setWordDic(oldDict => {
@@ -18,21 +18,29 @@ const useDictionary = () => {
     })
   }
 
-  function setToSentDic(sentenceInput) {
-    sentenceInput.split(/\s+/).forEach(item => {
-      setToWordDic(item)
-    })
+  function setToFollDic(sentenceInput) {
+    sentenceInput.split(" ").forEach((item, index, arr) => {
+      setToWordDic(item) // 统计该单词出现的次数
 
-    let sentDictionary = {...sentenceDic}
-    if (sentenceInput in sentenceDic) {
-      sentDictionary[sentenceInput] += 1
-    } else {
-      sentDictionary[sentenceInput] = 1
-    }
-    setSenDic(sentDictionary)
+      if (index < arr.length - 1) {  // 统计该单词后跟随的单词
+        setFollDic(oldDict =>{
+          let dictionary = {...oldDict}
+          if (item in dictionary) {  
+            if (arr[index + 1] in dictionary[item])
+              dictionary[item][arr[index + 1]] += 1
+            else 
+              dictionary[item][arr[index + 1]] = 1
+          } else {
+            dictionary[item] = {}
+            dictionary[item][arr[index + 1]] = 1
+          }
+          return dictionary
+        })
+      }
+    })
   }
 
-  return {wordDic, sentenceDic, setToWordDic, setToSentDic}
+  return {wordDic, followDic, setToWordDic, setToFollDic}
 }
 
 function AutoInput() {
@@ -42,7 +50,7 @@ function AutoInput() {
   const [inputWidth, setWidth] = useState(2)
   const inputRef = createRef()
 
-  const {wordDic, sentenceDic, setToWordDic, setToSentDic} = useDictionary()
+  const {wordDic, followDic, setToWordDic, setToFollDic} = useDictionary()
 
   // 当每次input的值变化时触发
   useEffect(() => {
@@ -57,23 +65,15 @@ function AutoInput() {
       return v.startsWith(last_word)
     });
     
-    let sentenceMatch = Object.keys(sentenceDic).filter(v => { // 匹配句子
-      if (v.split(" ").length > 1) 
-        return v.startsWith(words.join(" ") + " ")
-      else 
-        return false
-    })
+    // 当输入不为空且目前输入的字符于word字典中某个值完全匹配时，推测下一个单词
+    if (last_word && wordMatch.indexOf(last_word) !== -1) {
 
-    // 当输入不为空且目前输入的字符于word字典中某个值完全匹配且有匹配到的句子时，进行句子匹配
-    if (last_word && wordMatch.indexOf(last_word) !== -1 && sentenceMatch.length) {
-      // 获取频率最高的句子
-      let maxFreqSen = maxKeyInDic(sentenceDic, sentenceMatch)
-      // 获得目前输入的单词在句子中的位置
-      let currMatch = maxFreqSen.split(" ").indexOf(last_word)
-      if (currMatch + 1 < maxFreqSen.split(" ").length) // 若目前输入的单词不是在句子的结尾时，将下一个单词赋值到提示中
-        setText(" " + maxFreqSen.split(" ")[currMatch + 1]) 
-      else 
+      let followWord = followDic[last_word]
+      if (!followWord) {  // 若单词没有跟随单词的统计数据，则清空提示
         setText("")
+      } else {
+        setText(" " + maxKeyInDic(followWord, Object.keys(followWord))) // 将单词后出现最高频的单词作为提示
+      }
     } else if (last_word && wordMatch.length) { // 当有匹配的字符和输入不为空时
       // 获取频率最高的词
       let maxFreqWord = maxKeyInDic(wordDic, wordMatch)
@@ -110,7 +110,7 @@ function AutoInput() {
       if (inputValue.split(" ").length === 1) {
         setToWordDic(inputValue)
       } else {
-        setToSentDic(inputValue)
+        setToFollDic(inputValue)
       }
     }
     setInput("")
@@ -144,16 +144,29 @@ function AutoInput() {
             : <li>暂无数据</li>
           }
         </ul>
-        目前句子字典有：
-        <ul>
+        目前统计的跟随单词：
+        <div>
           {
-            Object.keys(sentenceDic).length 
-            ? Object.keys(sentenceDic).map((sentence, index) => {
-              return <li key={index}>{sentence}:{sentenceDic[sentence]}</li>
+            Object.keys(followDic).length 
+            ? Object.keys(followDic).map((word, index) => {
+              return (
+              <div key={index}>
+                {word}
+                <ul>
+                  {
+                    Object.keys(followDic[word]).map((foll, index) => {
+                      return <li key={index+foll+word}>
+                        {foll}: {followDic[word][foll]}
+                      </li>
+                    })
+                  }
+                </ul>
+              </div>
+              )
             }) 
-            : <li>暂无数据</li>
+            : <ul>暂无数据</ul>
           }
-        </ul>
+        </div>
       </div>
     </div>
   )
