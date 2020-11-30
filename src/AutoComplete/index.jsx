@@ -1,5 +1,39 @@
 import React, { useState, createRef, useEffect } from 'react';
 import './style.css'
+import { maxKeyInDic } from './util'
+
+const useDictionary = () => {
+  const [wordDic, setWordDic] = useState({})
+  const [sentenceDic, setSenDic] = useState({})
+
+  function setToWordDic(wordInput) {
+    setWordDic(oldDict => {
+      let dictionary = {...oldDict}
+      if (wordInput in dictionary) {
+        dictionary[wordInput] += 1
+      } else {
+        dictionary[wordInput] = 1
+      }
+      return dictionary
+    })
+  }
+
+  function setToSentDic(sentenceInput) {
+    sentenceInput.split(/\s+/).forEach(item => {
+      setToWordDic(item)
+    })
+
+    let sentDictionary = {...sentenceDic}
+    if (sentenceInput in sentenceDic) {
+      sentDictionary[sentenceInput] += 1
+    } else {
+      sentDictionary[sentenceInput] = 1
+    }
+    setSenDic(sentDictionary)
+  }
+
+  return {wordDic, sentenceDic, setToWordDic, setToSentDic}
+}
 
 function AutoInput() {
 
@@ -8,8 +42,7 @@ function AutoInput() {
   const [inputWidth, setWidth] = useState(2)
   const inputRef = createRef()
 
-  const [wordDic, setDic] = useState([])
-  const [sentenceDic, setSenDic] = useState([])
+  const {wordDic, sentenceDic, setToWordDic, setToSentDic} = useDictionary()
 
   // 当每次input的值变化时触发
   useEffect(() => {
@@ -20,30 +53,35 @@ function AutoInput() {
     let last_word = words[words.length - 1]
 
     // 每次字符变化时检测是否有可匹配的选项
-    let wordMatch = wordDic.filter(v => { // 匹配单词
+    let wordMatch = Object.keys(wordDic).filter(v => { // 匹配单词
       if (v.split(" ").length === 1) 
         return v.startsWith(last_word)
       else 
         return false
-    })
+    });
     
-    let sentenceMatch = sentenceDic.filter(v => { // 匹配句子
+    let sentenceMatch = Object.keys(sentenceDic).filter(v => { // 匹配句子
       if (v.split(" ").length > 1) 
         return v.startsWith(words.join(" "))
       else 
         return false
     })
+
     // 当输入不为空且目前输入的字符于word字典中某个值完全匹配且有匹配到的句子时，进行句子匹配
     if (last_word && wordMatch.indexOf(last_word) !== -1 && sentenceMatch.length) {
+      // 获取频率最高的句子
+      let maxFreqSen = maxKeyInDic(sentenceDic, sentenceMatch)
       // 获得目前输入的单词在句子中的位置
-      let currMatch = sentenceMatch[0].split(" ").indexOf(last_word)
-      if (currMatch + 1 < sentenceMatch[0].split(" ").length) // 若目前输入的单词不是在句子的结尾时，将下一个单词赋值到提示中
-        setText(" " + sentenceMatch[0].split(" ")[currMatch + 1]) 
+      let currMatch = maxFreqSen.split(" ").indexOf(last_word)
+      if (currMatch + 1 < maxFreqSen.split(" ").length) // 若目前输入的单词不是在句子的结尾时，将下一个单词赋值到提示中
+        setText(" " + maxFreqSen.split(" ")[currMatch + 1]) 
       else 
         setText("")
-    } else if (last_word && wordMatch.length) {
-      // 当有匹配的字符和输入不为空时，将第一个匹配到的字符去掉重合的部分并赋值到提示中
-      setText(wordMatch[0].replace(last_word, ""))
+    } else if (last_word && wordMatch.length) { // 当有匹配的字符和输入不为空时
+      // 获取频率最高的词
+      let maxFreqWord = maxKeyInDic(wordDic, wordMatch)
+      // 将匹配到的字符去掉重合的部分并赋值到提示中
+      setText(maxFreqWord.replace(last_word, ""))
     } else {
       // 当条件不符合时将提示文本设置为空
       setText("")
@@ -70,16 +108,12 @@ function AutoInput() {
   // 当点击时，添加字符进字典中，并清空输入框
   const handleSubmit = () => {
     // 仅当输入的值不为空时，将值引入字典
-    let wordInput =  currInput.trim()// 去除首尾的空格
-    if (wordInput) {
-      if (wordInput.split(" ").length === 1) {
-        let newWord = new Set([...wordDic, wordInput])  // 确保字典内没有重复的字符串
-        setDic([...newWord])
+    let inputValue =  currInput.trim()// 去除首尾的空格
+    if (inputValue) {
+      if (inputValue.split(" ").length === 1) {
+        setToWordDic(inputValue)
       } else {
-        let newWord = new Set([...wordDic, ...wordInput.split(" ")])
-        setDic([...newWord])
-        let newSentence = new Set([...sentenceDic, wordInput])
-        setSenDic([...newSentence])
+        setToSentDic(inputValue)
       }
     }
     setInput("")
@@ -106,17 +140,21 @@ function AutoInput() {
         目前单词字典里有：
         <ul>
           {
-            wordDic.length ? wordDic.map((word, index) => {
-              return <li key={index}>{word}</li>
-            }) : <li>暂无数据</li>
+            Object.keys(wordDic).length 
+            ? Object.keys(wordDic).map((word, index) => {
+              return <li key={index}>{word}:{wordDic[word]}</li>
+            }) 
+            : <li>暂无数据</li>
           }
         </ul>
         目前句子字典有：
         <ul>
           {
-            sentenceDic.length ? sentenceDic.map((sentence, index) => {
-              return <li key={index}>{sentence}</li>
-            }) : <li>暂无数据</li>
+            Object.keys(sentenceDic).length 
+            ? Object.keys(sentenceDic).map((sentence, index) => {
+              return <li key={index}>{sentence}:{sentenceDic[sentence]}</li>
+            }) 
+            : <li>暂无数据</li>
           }
         </ul>
       </div>
